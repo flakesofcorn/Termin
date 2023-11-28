@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Data.SqlTypes;
+using System.Reflection.Metadata.Ecma335;
 using System.Security;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
@@ -9,7 +10,8 @@ using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 class Program
 {
 
-    static string connectionString = "Data Source=DESKTOP-EVCQ0V1\\SQLEXPRESS;Initial Catalog=userdb;Integrated Security=True";
+    static string connectionString = "Data Source=DESKTOP-EVCQ0V1\\SQLEXPRESS;Initial Catalog=users_db;Integrated Security=True";
+
 
 
     static void Main()
@@ -38,6 +40,12 @@ class Program
                     Console.WriteLine("logged in");
                     index();
                 }
+                else
+                {
+                    Console.Write('\n');
+                    Console.WriteLine("wrong username or password please double check your credentials ");
+                    Main();
+                }
                 break;
             case "mkusr":
                 Console.Write("username: ");
@@ -57,6 +65,12 @@ class Program
                 System.Environment.Exit(0);
                 break;
             case "":
+                Main();
+                break;
+            case "clear":
+                Console.Clear();
+                break;
+            default:
                 Main();
                 break;
         }
@@ -86,7 +100,6 @@ class Program
         return input;
     }
 
-    static int number = 1;
 
     static void help()
     {
@@ -97,19 +110,12 @@ class Program
 
         Main();
     }
-    static void hash(string password)
-    {
-
-
-
-    }
-
 
     static void create_user(string username, string password, string email)
     {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
-            connection.Open();
+
 
             byte[] salt = RandomNumberGenerator.GetBytes(128 / 8);
             Console.WriteLine($"salt: {Convert.ToBase64String(salt)}");
@@ -123,16 +129,28 @@ class Program
 
 
 
-            string query = "INSERT INTO Users_table (Username, Password, admin, Email, salt) VALUES (@Username, @Password, @admin, @Email, @salt)";
+            string query = "INSERT INTO AUsers_table (username, hash, admin, email, salt) VALUES (@username, @password, @admin, @email, @salt)";
             using (SqlCommand command = new SqlCommand(query, connection))
             {
                 command.Parameters.AddWithValue("@Username", username);
                 command.Parameters.AddWithValue("@Password", hash);
                 command.Parameters.AddWithValue("@email", email);
-                command.Parameters.AddWithValue("@salt", Convert.ToBase64String(salt));
-                command.Parameters.AddWithValue("@admin", 0);
+                command.Parameters.AddWithValue("@salt", SqlDbType.VarBinary).Value = salt;
+                command.Parameters.AddWithValue("@admin", false);
+                try
+                {
+                    connection.Open();
+                    Console.WriteLine(connection);
+                    Console.WriteLine(hash);
+                    command.ExecuteNonQuery();
 
-                command.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+
+
                 connection.Close();
 
 
@@ -152,11 +170,8 @@ class Program
 
 
 
-            string hash;
-            string salt;
 
-
-            string query = "SELECT password, salt FROM Users_table WHERE Username = @Username";
+            string query = "SELECT hash, salt FROM AUsers_table WHERE Username = @Username";
             using (SqlCommand command = new SqlCommand(query, connection))
             {
                 command.Parameters.AddWithValue("@Username", username);
@@ -166,21 +181,40 @@ class Program
                 {
                     if (reader.Read())
                     {
-                        hash = reader.GetString(0);
-                        salt = reader.GetString(0);
-                        
+                        string hash = reader.GetString(0);
+                        byte[] salt = (byte[])reader["salt"];
+
+
+                        if (salt != null)
+                        {
+                            string hash2 = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                                password: password!,
+                                salt: salt,
+                                prf: KeyDerivationPrf.HMACSHA256,
+                                iterationCount: 100000,
+                                numBytesRequested: 256 / 8));
+
+                            if (hash2 != hash)
+                            {
+
+                                return false;
+                            }
+                            else
+                            {
+                                return true;
+                            }
+
+
+
+                        }
+
+
                     }
 
                 }
 
-                salt = Convert.ToByte(salt);
 
-                string hash2 = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                    password: password!,
-                    salt: salt,
-                    prf: KeyDerivationPrf.HMACSHA256,
-                    iterationCount: 100000,
-                    numBytesRequested: 256 / 8));
+
 
 
                 int count = (int)command.ExecuteScalar();
@@ -223,34 +257,161 @@ class Program
             case "":
                 index();
                 break;
+            case "mkusr":
+                Console.Write("username: ");
+                string new_username = Console.ReadLine();
 
+                Console.Write("password: ");
+                string new_password = GetMaskedInput();
+
+                Console.Write("email: ");
+                string email = Console.ReadLine();
+
+                create_user(new_username, new_password, email);
+
+
+                break;
+            case "clear":
+                Console.Clear();
+                index();
+                break;
+            default:
+                index();
+                break;
         }
 
 
     }
     static void display_users()
     {
+        Console.WriteLine("please type in your username");
+        string username = Console.ReadLine();
+        bool valid = Checkadm(username);
+        if (valid)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+
+                string query = "SELECT * FROM AUsers_table";
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Console.WriteLine("----------------------------------------------");
+                            Console.WriteLine($"    |{reader["id"]}  |   {reader["username"]}  |   {reader["email"]}  |   {reader["admin"]}    |");
+
+                        }
+
+                    }
+
+                    command.ExecuteNonQuery();
+                    connection.Close();
+                }
+
+            }
+
+            index();
+        }
+        else
+        {
+            Console.WriteLine("he user youre currently using does not have access to this command");
+            index();
+        }
+    }
+
+    static bool Checkadm(string username)
+    {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
             connection.Open();
 
 
-            string query = "SELECT * FROM Users_table";
+
+
+            string query = "SELECT admin FROM AUsers_table WHERE Username = @Username";
             using (SqlCommand command = new SqlCommand(query, connection))
             {
+                command.Parameters.AddWithValue("@Username", username);
+
+
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    while (reader.Read())
+                    if (reader.Read())
                     {
-                        Console.WriteLine($"{reader["id"]}, {reader["username"]}, {reader["email"]}, {reader["admin"]}");
+                        if (reader["admin"] is true)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+
+
+
                     }
 
                 }
 
-                command.ExecuteNonQuery();
+
+
+
+
+                int count = (int)command.ExecuteScalar();
+
+
                 connection.Close();
+                return count > 0;
+
             }
-            index();
+        }
+    }
+
+    static void registerproduct()
+    {
+        using (SqlConnection connection = new SqlConnection(connectionString))
+        {
+
+
+
+
+
+            string query = "INSERT INTO products (SerialNumber, Name, SizeInLitres) VALUES (@snn, @name, @size)";
+            using (SqlCommand command = new SqlCommand(query, connection))
+            {
+                Console.WriteLine("input the serialnumber of the product");
+                string snn = Console.ReadLine();
+                Console.WriteLine("input the name of the product");
+                string name = Console.ReadLine();
+                Console.WriteLine("input the size(litres) of the product");
+                string size = Console.ReadLine();
+
+                command.Parameters.AddWithValue("@snn", snn);
+                command.Parameters.AddWithValue("@name" name);
+                command.Parameters.AddWithValue("@size", size);
+
+                try
+                {
+                    connection.Open();
+                    command.ExecuteNonQuery();
+
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+
+
+                connection.Close();
+
+
+
+            }
+            Main();
         }
     }
 }
