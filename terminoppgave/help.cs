@@ -20,7 +20,10 @@ namespace terminoppgave
             Console.WriteLine("-mkprod      |       add new product to databse");
             Console.WriteLine("-listprod    |       lists all products saved in the databse");
             Console.WriteLine("-editusr     |       allows admin to edit and delete registered users");
-            Console.WriteLine("-mkorder     |       creates an order and save it to the database\n");
+            Console.WriteLine("-mkorder     |       creates an order and save it to the database");
+            console.WriteLine("-delorder    |       deletes an order");
+            console.WriteLine("-orders      |       lists all orders in a table\n");
+            
             if (!Program.logged_in)
             {
                 Program.Main();
