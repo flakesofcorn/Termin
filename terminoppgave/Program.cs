@@ -606,11 +606,11 @@ namespace terminoppgave
                 }
                 if (!logged_in)
                 {
-                    index();
+                    Main();
                 }
                 else
                 {
-                    Main();
+                    index();
 
                 }
             }
