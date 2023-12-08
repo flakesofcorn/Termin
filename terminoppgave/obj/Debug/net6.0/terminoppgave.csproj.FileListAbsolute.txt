@@ -22,3 +22,6 @@ C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\obj
 C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\obj\Debug\net6.0\terminoppgave.pdb
 C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\obj\Debug\net6.0\terminoppgave.genruntimeconfig.cache
 C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\obj\Debug\net6.0\ref\terminoppgave.dll
+C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\bin\Debug\net6.0\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\bin\Debug\net6.0\MySqlConnector.dll
+C:\Users\sofian\OneDrive - Osloskolen\IT\Terminoppgave_fr\main\terminoppgave\bin\Debug\net6.0\System.Diagnostics.DiagnosticSource.dll
